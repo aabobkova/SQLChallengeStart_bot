@@ -4,7 +4,7 @@ from aiogram.utils.executor import start_webhook
 import logging
 
 API_TOKEN = '8174795025:AAFCtxXU2zKS-DJoQVls0RUpgHorhNjKSGo'
-WEBHOOK_HOST = 'https://your-app-name.onrender.com'  # ← позже заменим
+WEBHOOK_HOST = 'https://sqlchallengestart-bot.onrender.com'  # ← позже заменим
 WEBHOOK_PATH = '/webhook'
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
