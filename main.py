@@ -2,8 +2,11 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.executor import start_webhook
 import logging
+import asyncio
+import aiohttp
 import os
 
+# --- Настройки ---
 API_TOKEN = os.getenv("API_TOKEN")
 WEBHOOK_HOST = 'https://sqlchallengestart-bot.onrender.com'
 WEBHOOK_PATH = '/webhook'
@@ -13,7 +16,7 @@ bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 logging.basicConfig(level=logging.INFO)
 
-# --- Клавиатура с "Да" / "Нет" ---
+# --- Клавиатура Да/Нет ---
 def get_yes_no_keyboard():
     kb = InlineKeyboardMarkup(row_width=2)
     kb.add(
@@ -31,7 +34,7 @@ async def start(message: types.Message):
         reply_markup=get_yes_no_keyboard()
     )
 
-# --- Обработка ответов на вопрос ---
+# --- Ответы на кнопки ---
 @dp.callback_query_handler(lambda c: c.data in ["answer_yes", "answer_no"])
 async def handle_answer(callback_query: types.CallbackQuery):
     if callback_query.data == "answer_yes":
@@ -39,14 +42,26 @@ async def handle_answer(callback_query: types.CallbackQuery):
     else:
         await callback_query.message.answer("Хорошего дня! ☀️")
 
+# --- Автопинг (чтобы не засыпал Render) ---
+async def ping_self():
+    while True:
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(WEBHOOK_URL) as resp:
+                    print(f"Pinged self: {resp.status}")
+        except Exception as e:
+            print("Ping error:", e)
+        await asyncio.sleep(600)  # 10 минут
+
 # --- Webhook события ---
 async def on_startup(dp):
+    asyncio.create_task(ping_self())  # ← Запускаем автопинг
     await bot.set_webhook(WEBHOOK_URL)
 
 async def on_shutdown(dp):
     await bot.delete_webhook()
 
-# --- Запуск вебхука ---
+# --- Запуск бота ---
 if __name__ == '__main__':
     start_webhook(
         dispatcher=dp,
