@@ -6,7 +6,6 @@ import asyncio
 import aiohttp
 import os
 
-# --- Настройки ---
 API_TOKEN = os.getenv("API_TOKEN")
 WEBHOOK_HOST = 'https://sqlchallengestart-bot.onrender.com'
 WEBHOOK_PATH = '/webhook'
@@ -16,7 +15,7 @@ bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 logging.basicConfig(level=logging.INFO)
 
-# --- Клавиатура Да/Нет ---
+# --- Кнопки ---
 def get_yes_no_keyboard():
     kb = InlineKeyboardMarkup(row_width=2)
     kb.add(
@@ -25,7 +24,15 @@ def get_yes_no_keyboard():
     )
     return kb
 
-# --- Старт / Приветствие ---
+def get_clear_confirm_keyboard():
+    kb = InlineKeyboardMarkup(row_width=2)
+    kb.add(
+        InlineKeyboardButton("Да, очистить", callback_data="confirm_clear"),
+        InlineKeyboardButton("Нет", callback_data="cancel_clear")
+    )
+    return kb
+
+# --- Команда /start ---
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     await message.answer("Привет! 👋")
@@ -34,7 +41,7 @@ async def start(message: types.Message):
         reply_markup=get_yes_no_keyboard()
     )
 
-# --- Ответы на кнопки ---
+# --- Обработка ответа SQL Challenge ---
 @dp.callback_query_handler(lambda c: c.data in ["answer_yes", "answer_no"])
 async def handle_answer(callback_query: types.CallbackQuery):
     if callback_query.data == "answer_yes":
@@ -42,7 +49,30 @@ async def handle_answer(callback_query: types.CallbackQuery):
     else:
         await callback_query.message.answer("Хорошего дня! ☀️")
 
-# --- Автопинг (чтобы не засыпал Render) ---
+# --- Команда /clear с подтверждением ---
+@dp.message_handler(commands=['clear'])
+async def ask_clear_confirmation(message: types.Message):
+    await message.answer(
+        "Ты точно хочешь очистить последние сообщения?",
+        reply_markup=get_clear_confirm_keyboard()
+    )
+
+# --- Обработка подтверждения на очистку ---
+@dp.callback_query_handler(lambda c: c.data in ["confirm_clear", "cancel_clear"])
+async def handle_clear_response(callback_query: types.CallbackQuery):
+    if callback_query.data == "confirm_clear":
+        await callback_query.message.answer("Очищаю последние сообщения...")
+
+        try:
+            for i in range(20):
+                msg_id = callback_query.message.message_id - i
+                await bot.delete_message(chat_id=callback_query.message.chat.id, message_id=msg_id)
+        except Exception as e:
+            logging.warning(f"Ошибка при удалении: {e}")
+    else:
+        await callback_query.message.answer("Окей, ничего не трогаю. ❌")
+
+# --- Автопинг ---
 async def ping_self():
     while True:
         try:
@@ -51,17 +81,17 @@ async def ping_self():
                     print(f"Pinged self: {resp.status}")
         except Exception as e:
             print("Ping error:", e)
-        await asyncio.sleep(600)  # 10 минут
+        await asyncio.sleep(600)
 
-# --- Webhook события ---
+# --- Webhook ---
 async def on_startup(dp):
-    asyncio.create_task(ping_self())  # ← Запускаем автопинг
+    asyncio.create_task(ping_self())
     await bot.set_webhook(WEBHOOK_URL)
 
 async def on_shutdown(dp):
     await bot.delete_webhook()
 
-# --- Запуск бота ---
+# --- Запуск ---
 if __name__ == '__main__':
     start_webhook(
         dispatcher=dp,
