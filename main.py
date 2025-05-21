@@ -62,7 +62,6 @@ async def ask_clear_confirmation(message: types.Message):
 async def handle_clear_response(callback_query: types.CallbackQuery):
     if callback_query.data == "confirm_clear":
         await callback_query.message.answer("Очищаю последние сообщения...")
-
         try:
             for i in range(20):
                 msg_id = callback_query.message.message_id - i
@@ -87,12 +86,14 @@ async def ping_self():
 async def on_startup(dp):
     asyncio.create_task(ping_self())
     await bot.set_webhook(WEBHOOK_URL)
+    print(f"✅ Webhook установлен: {WEBHOOK_URL}")
 
 async def on_shutdown(dp):
     await bot.delete_webhook()
 
 # --- Запуск ---
 if __name__ == '__main__':
+    port = int(os.getenv("PORT", 10000))  # ⚠️ ВАЖНО для Render!
     start_webhook(
         dispatcher=dp,
         webhook_path=WEBHOOK_PATH,
@@ -100,5 +101,5 @@ if __name__ == '__main__':
         on_shutdown=on_shutdown,
         skip_updates=True,
         host='0.0.0.0',
-        port=10000
+        port=port
     )
